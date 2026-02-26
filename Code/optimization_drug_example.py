@@ -217,3 +217,9 @@ print(f"Optimal Metformin Dose with Best Lambda: {best_result['optimal_dose']:.2
 print(f"Optimal Metformin Effect with Best Lambda: {best_result['optimal_effect']*100:.2f}%")
 print(f"Error from Target Dose: {best_result['error']:.2f} mg")
 
+#Answers to the questions:
+#1. A higher lambda value increases the penalty for toxicity, which generally leads to a lower optimal dose. Conversely, a lower lambda value allows for a higher dose since the toxicity penalty is less severe. The optimal dose will vary based on the balance between efficacy and toxicity as determined by the lambda value.
+# When increasing lambda, qualitatively, the curve gets steeper and peaks a lot earlier and higher than a lower lambda value. 
+#2. Newton's method typically converges faster than the steepest ascent method, especially near the optimum, because it uses second-order information (the Hessian) to adjust the step size and direction. However, it can be more sensitive to the choice of initial guess and may fail to converge if the Hessian is not positive definite or if there are saddle points. Steepest ascent is more robust but can be slower to converge, especially in cases where the function has narrow valleys or plateaus.
+#3. It depends. With Newton's method, less iterations has less of an imapct due to how fast it converges. Steepest ascent is a bit slower in its way of getting to the peak, so less iterations would have a drastic effect through this method. 
+#4. 
