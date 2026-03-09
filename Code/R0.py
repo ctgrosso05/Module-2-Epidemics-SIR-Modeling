@@ -33,9 +33,9 @@ print("Estimated R0:", R0)
 # Implementing Euler's method for SEIR model
 
 # Parameters (guessed values)
-beta = 0.3  # infection rate
-sigma = 0.2  # incubation rate (1/sigma = incubation period)
-gamma = 0.1  # recovery rate (1/gamma = infectious period)
+beta = 0.357  # infection rate
+sigma = 0.243  # incubation rate (1/sigma = incubation period)
+gamma = 0.107  # recovery rate (1/gamma = infectious period)
 
 # Initial conditions (assuming total population N=10000, initial S, E, I, R)
 N = 10000
@@ -77,7 +77,7 @@ for i in range(1, len(t)):
 data_days = exp_data['day'].values
 sim_I_at_data_days = np.interp(data_days, t, I)
 
-# Calculate SSE
+# Calculate SSE between simulated I and observed data
 observed_I = exp_data['active reported daily cases'].values
 SSE = np.sum((sim_I_at_data_days - observed_I)**2)
 print(f"SSE with guessed parameters: {SSE}")
