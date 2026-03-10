@@ -32,10 +32,10 @@ print("Estimated R0:", R0)
 
 # Implementing Euler's method for SEIR model
 
-# Parameters (guessed values)
-beta = 0.357  # infection rate
-sigma = 0.243  # incubation rate (1/sigma = incubation period)
-gamma = 0.107  # recovery rate (1/gamma = infectious period)
+# Parameters (initial guesses, will be fitted later)
+beta = 0.3  # infection rate
+sigma = 0.2  # incubation rate (1/sigma = incubation period)
+gamma = 0.1  # recovery rate (1/gamma = infectious period)
 
 # Initial conditions (assuming total population N=10000, initial S, E, I, R)
 N = 10000
@@ -50,45 +50,96 @@ t_end = 50  # days
 dt = 0.1
 t = np.arange(t_start, t_end, dt)
 
-# Arrays to store values
-S = np.zeros(len(t))
-E = np.zeros(len(t))
-I = np.zeros(len(t))
-R = np.zeros(len(t))
+# Step 1: Function to implement Euler's method for SEIR
+def euler_seir(beta, sigma, gamma, S0, E0, I0, R0, timepoints, N):
+    dt = timepoints[1] - timepoints[0]  # assume uniform spacing
+    S = [S0]
+    E = [E0]
+    I = [I0]
+    R = [R0]
+    for i in range(1, len(timepoints)):
+        dS = -beta * S[-1] * I[-1] / N
+        dE = beta * S[-1] * I[-1] / N - sigma * E[-1]
+        dI = sigma * E[-1] - gamma * I[-1]
+        dR = gamma * I[-1]
+        
+        S.append(S[-1] + dt * dS)
+        E.append(E[-1] + dt * dE)
+        I.append(I[-1] + dt * dI)
+        R.append(R[-1] + dt * dR)
+    return S, E, I, R
 
-S[0] = S0
-E[0] = E0
-I[0] = I0
-R[0] = R0
-
-# Euler's method
-for i in range(1, len(t)):
-    dS = -beta * S[i-1] * I[i-1] / N
-    dE = beta * S[i-1] * I[i-1] / N - sigma * E[i-1]
-    dI = sigma * E[i-1] - gamma * I[i-1]
-    dR = gamma * I[i-1]
+# Step 2: Function to fit parameters using grid search
+def fit_seir_parameters(timepoints, N, S0, E0, I0, R0, data):
+    # Define ranges for parameters
+    beta_range = np.linspace(0.1, 1.0, 10)
+    sigma_range = np.linspace(0.1, 0.5, 10)
+    gamma_range = np.linspace(0.05, 0.3, 10)
     
-    S[i] = S[i-1] + dt * dS
-    E[i] = E[i-1] + dt * dE
-    I[i] = I[i-1] + dt * dI
-    R[i] = R[i-1] + dt * dR
+    SSE_array = []
+    param_combinations = []
+    
+    for b in beta_range:
+        for s in sigma_range:
+            for g in gamma_range:
+                S, E, I_sim, R = euler_seir(b, s, g, S0, E0, I0, R0, timepoints, N)
+                # Interpolate I_sim to data days
+                data_days = data['day'].values
+                sim_I_at_data_days = np.interp(data_days, timepoints, I_sim)
+                observed_I = data['active reported daily cases'].values
+                SSE = np.sum((sim_I_at_data_days - observed_I)**2)
+                SSE_array.append(SSE)
+                param_combinations.append((b, s, g))
+    
+    # Find best parameters
+    min_SSE_idx = np.argmin(SSE_array)
+    best_beta, best_sigma, best_gamma = param_combinations[min_SSE_idx]
+    best_SSE = SSE_array[min_SSE_idx]
+    
+    return best_beta, best_sigma, best_gamma, best_SSE
+
+# Fit parameters
+best_beta, best_sigma, best_gamma, best_SSE = fit_seir_parameters(t, N, S0, E0, I0, R0, exp_data)
+
+print(f"Best parameters: beta={best_beta}, sigma={best_sigma}, gamma={best_gamma}, SSE={best_SSE}")
+
+# Step 3: Run the model longer to find the peak
+# Extend timepoints to 200 days or until peak
+t_extended = np.arange(t_start, 200, dt)
+S_ext, E_ext, I_ext, R_ext = euler_seir(best_beta, best_sigma, best_gamma, S0, E0, I0, R0, t_extended, N)
+
+# Find peak of I
+peak_I = np.max(I_ext)
+peak_day = t_extended[np.argmax(I_ext)]
+
+print(f"Peak infected: {peak_I}")
+print(f"Is this reasonable? Assuming N=10000, peak at ~{peak_I/N*100:.1f}% of population, which may be plausible for an epidemic.")
+print(f"Peak occurs on day: {peak_day}")
+
+# Implement Euler’s method for SEIR modeling (using fitted parameters)
+# Plot Euler’s method solutions for I(t) and compare to your data
+# Guess beta, sigma, and gamma and calculate SSE (now using fitted)
+
+# Use best parameters for simulation (already done above)
+S, E, I, R = euler_seir(best_beta, best_sigma, best_gamma, S0, E0, I0, R0, t, N)
 
 # Interpolate simulated I to match data days
 data_days = exp_data['day'].values
 sim_I_at_data_days = np.interp(data_days, t, I)
 
-# Calculate SSE between simulated I and observed data
+# Calculate SSE with best parameters
 observed_I = exp_data['active reported daily cases'].values
 SSE = np.sum((sim_I_at_data_days - observed_I)**2)
-print(f"SSE with guessed parameters: {SSE}")
+print(f"SSE with fitted parameters: {SSE}")
 
 # Plot
 plt.figure(figsize=(10, 6))
-plt.plot(t, I, label='Simulated I(t) - Euler SEIR')
+plt.plot(t, I, label='Simulated I(t) - Fitted SEIR')
 plt.scatter(exp_data['day'], exp_data['active reported daily cases'], color='red', label='Observed Data')
 plt.xlabel('Day')
 plt.ylabel('Infected')
-plt.title('SEIR Model vs Data')
+plt.title('Fitted SEIR Model vs Data')
 plt.legend()
 plt.show()
 
+#Used Generative AI, ChatGPT 4.0, as assistance to work through this assignment. 
