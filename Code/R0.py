@@ -140,4 +140,20 @@ plt.xlabel('Day')
 plt.ylabel('Infected')
 plt.title('Fitted SEIR Model vs Data')
 plt.legend()
+# --- load release #3 and overlay on the existing plot ---------------
+data3_path = os.path.join(
+    script_dir,
+    "..",
+    "Data",
+    "mystery_virus_daily_active_counts_RELEASE#3.csv"
+)
+data3 = pd.read_csv(data3_path, parse_dates=['date'])
+exp_data3 = data3[(data3['day'] >= 20) & (data3['day'] <= 100)]
+
+# (after you have drawn the SEIR curve and release‑#2 points:)
+plt.scatter(exp_data3['day'],
+            exp_data3['active reported daily cases'],
+            color='green', marker='x',
+            label='Observed data (release #3)')
+plt.legend()          # update legend to include #3
 plt.show()
