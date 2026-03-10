@@ -46,7 +46,7 @@ R0 = 0
 
 # Time steps
 t_start = 0
-t_end = 50  # days
+t_end = 100  # days
 dt = 0.1
 t = np.arange(t_start, t_end, dt)
 
