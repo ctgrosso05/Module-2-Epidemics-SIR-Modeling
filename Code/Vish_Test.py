@@ -51,45 +51,57 @@ peak_day_base = t[np.argmax(I_base)]
 print(f"Baseline peak: {peak_I_base:.0f} infected on day {peak_day_base:.1f}")
 
 # ----------------------------------------------------------------------
-# intervention: 14‑day school closure starting day 70
-closure_start = 70
-closure_end   = closure_start + 14   # day 84
+# intervention: vaccine event on day 70 (2000 people, 90% efficacy)
+vaccine_day = 70
+vaccine_total = 2000
+vaccine_efficacy = 0.9
+vaccinated_protected = vaccine_total * vaccine_efficacy
+vaccinated_unprotected = vaccine_total * (1 - vaccine_efficacy)
 
-# build β profile: normal before/after, 20% during closure
-beta_profile = np.ones_like(t) * best_beta
-mask = (t >= closure_start) & (t < closure_end)
-beta_profile[mask] *= 0.2   # only 20% of normal contacts
-
-# integrate with time‑varying β
-S_close = np.zeros_like(t)
-E_close = np.zeros_like(t)
-I_close = np.zeros_like(t)
-R_close = np.zeros_like(t)
-S_close[0], E_close[0], I_close[0], R_close[0] = S0, E0, I0, R0
+# integrate with vaccination event
+S_vax = np.zeros_like(t)
+E_vax = np.zeros_like(t)
+I_vax = np.zeros_like(t)
+R_vax = np.zeros_like(t)
+S_vax[0], E_vax[0], I_vax[0], R_vax[0] = S0, E0, I0, R0
 
 for i in range(1, len(t)):
-    b = beta_profile[i-1]
-    dS = -b * S_close[i-1] * I_close[i-1] / N
-    dE = b * S_close[i-1] * I_close[i-1] / N - best_sigma * E_close[i-1]
-    dI = best_sigma * E_close[i-1] - best_gamma * I_close[i-1]
-    dR = best_gamma * I_close[i-1]
-    S_close[i] = S_close[i-1] + dt * dS
-    E_close[i] = E_close[i-1] + dt * dE
-    I_close[i] = I_close[i-1] + dt * dI
-    R_close[i] = R_close[i-1] + dt * dR
+    # standard SEIR dynamics
+    dS = -best_beta * S_vax[i-1] * I_vax[i-1] / N
+    dE = best_beta * S_vax[i-1] * I_vax[i-1] / N - best_sigma * E_vax[i-1]
+    dI = best_sigma * E_vax[i-1] - best_gamma * I_vax[i-1]
+    dR = best_gamma * I_vax[i-1]
 
-peak_I_close = I_close.max()
-peak_day_close = t[np.argmax(I_close)]
-print(f"With school closure: {peak_I_close:.0f} infected on day {peak_day_close:.1f}")
+    S_vax[i] = S_vax[i-1] + dt * dS
+    E_vax[i] = E_vax[i-1] + dt * dE
+    I_vax[i] = I_vax[i-1] + dt * dI
+    R_vax[i] = R_vax[i-1] + dt * dR
+
+    # apply vaccination at the specified day
+    current_day = t[i]
+    if abs(current_day - vaccine_day) < dt:
+        # move successfully vaccinated people to R
+        S_vax[i] -= vaccine_total
+        # 90% become immune
+        R_vax[i] += vaccinated_protected
+        # 10% stay in S
+        S_vax[i] += vaccinated_unprotected
+        print(f"Vaccine event on day {vaccine_day}: {vaccine_total} vaccinated")
+        print(f"  → {vaccinated_protected:.0f} protected (90%)")
+        print(f"  → {vaccinated_unprotected:.0f} unprotected (10%)")
+
+peak_I_vax = I_vax.max()
+peak_day_vax = t[np.argmax(I_vax)]
+print(f"With vaccine event: {peak_I_vax:.0f} infected on day {peak_day_vax:.1f}")
 
 # ----------------------------------------------------------------------
 # plotting
 plt.figure(figsize=(10, 6))
 plt.plot(t, I_base, label='Baseline VT outbreak (β=0.5)')
-plt.plot(t, I_close, '--', label='School closure day 70–84 (β=0.2×)')
+plt.plot(t, I_vax, '--', label='Vaccine event day 70 (2000 people, 90% efficacy)')
 plt.xlabel('Day')
 plt.ylabel('Number infected')
-plt.title('SEIR simulation – VT population of 38 000')
+plt.title('SEIR simulation – VT population of 38 000')
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
